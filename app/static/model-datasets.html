@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1220">
+  <title>AegisVoice · Research models and datasets</title>
+  <link rel="stylesheet" href="/static/styles.css?v=20261029k">
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/"><span class="brand-mark" aria-hidden="true">A</span><span><strong>AegisVoice</strong><small>RESEARCH RESOURCE CATALOG</small></span></a><a class="quiet-link" href="/">← Back to analysis</a></header>
+  <main class="shell catalog-page">
+    <section class="intro"><div class="eyebrow">RESEARCH LINKS / LOCAL WORKFLOW</div><h1>Models and datasets,<br><em>connected to the project.</em></h1><p class="lede">These links lead to the original research resources. Dataset audio can be imported into the local trainer after you download it and prepare labels. A research checkpoint is not used by the current detector until its model code, preprocessing, and evaluation are integrated.</p></section>
+    <section class="panel catalog-resource"><div class="eyebrow">PRETRAINED ANTI-SPOOF MODEL</div><h2>AASIST / AASIST-L</h2><p>A graph-attention audio anti-spoofing research model. Its code and checkpoints are upstream research resources; this app does not currently load that checkpoint.</p><div class="catalog-actions"><a class="secondary-button" href="https://github.com/clovaai/aasist" target="_blank" rel="noreferrer">Official AASIST code ↗</a><a class="secondary-button" href="https://github.com/clovaai/aasist/tree/main/models/weights" target="_blank" rel="noreferrer">Checkpoint files ↗</a></div><p class="small-note">To use AASIST in this project, the model runtime and exact input pipeline must be added and tested against a separate evaluation set. The local trainer below uses its own selected DSP feature set.</p></section>
+    <section class="panel catalog-resource"><div class="eyebrow">RESEARCH DIRECTION · NOT RUN BY THIS APP</div><h2>Self-supervised speech representations</h2><p>Recent work studies frozen WavLM or Wav2Vec2 representations paired with a small classifier to improve cross-dataset behavior. This is a promising integration candidate, but it needs a larger model runtime, compatible weights, license review, and external evaluation before it can produce AegisVoice results.</p><div class="catalog-actions"><a class="secondary-button" href="https://www.isca-archive.org/interspeech_2024/pascu24_interspeech.pdf" target="_blank" rel="noreferrer">Read the Interspeech 2024 paper ↗</a></div></section>
+    <section class="catalog-section"><div class="eyebrow">LABELED AUDIO CORPORA</div><h2>Datasets for training or evaluation</h2><div class="catalog-dataset-grid">
+      <article class="panel catalog-resource"><h3>ASVspoof 2021</h3><p>Challenge data and baselines for logical access, physical access, and deepfake tracks. Review access, protocol, and usage terms at the source.</p><a href="https://www.asvspoof.org/index2021.html" target="_blank" rel="noreferrer">Open ASVspoof 2021 ↗</a></article>
+      <article class="panel catalog-resource"><h3>ASVspoof 5</h3><p>A newer challenge corpus with crowdsourced speakers, varied recording conditions, contemporary attacks, and adversarial examples. Use its official evaluation protocol and read the dataset license before importing.</p><a href="https://zenodo.org/records/14498691" target="_blank" rel="noreferrer">Open the official ASVspoof 5 record ↗</a></article>
+      <article class="panel catalog-resource"><h3>Fraunhofer In-the-Wild</h3><p>Real-world online recordings intended to help examine how spoof detectors behave outside controlled studio corpora.</p><a href="https://deepfake-demo.aisec.fraunhofer.de/in_the_wild" target="_blank" rel="noreferrer">Open In-the-Wild dataset ↗</a></article>
+      <article class="panel catalog-resource"><h3>WaveFake</h3><p>Generated speech for research comparison. Check the record and source-corpus terms before using or redistributing its contents.</p><a href="https://zenodo.org/records/5642694" target="_blank" rel="noreferrer">Open WaveFake on Zenodo ↗</a></article>
+      <article class="panel catalog-resource"><h3>Your labeled corpus</h3><p>Import a folder with Human / AI subfolders or select audio files and a <code>filename,label</code> CSV manifest.</p><a href="/?view=training">Open the local training workspace →</a></article>
+    </div></section>
+    <section class="panel catalog-workflow"><div class="eyebrow">HOW A DATASET ENTERS THIS APP</div><h2>Download, label, import, evaluate</h2><ol><li>Read the dataset terms and use the original dataset page linked above.</li><li>Organize audio into Human and AI folders or prepare the CSV template in Train model.</li><li>Import the examples, group related clips by speaker or source, then compare classifiers.</li><li>Train a local model and check its grouped holdout report. Keep a separate corpus for final evaluation.</li></ol><p>Only extracted features and label metadata are retained. The current score is an experimental model output; it is not a verified real-world probability.</p><a class="quiet-link" href="/model-datasets.md">Read the full local catalog notes ↗</a></section>
+    <footer><span>AEGISVOICE · LOCAL FIRST</span><span>Research references do not imply model or dataset endorsement.</span></footer>
+  </main>
+</body>
+</html>

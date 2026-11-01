@@ -1,0 +1,14 @@
+test_pcm_wav_decode_and_stereo_cancellation_measure (tests.test_offline.AudioDecodeTests.test_pcm_wav_decode_and_stereo_cancellation_measure) ... ok
+test_rejects_corrupt_and_unsupported_inputs (tests.test_offline.AudioDecodeTests.test_rejects_corrupt_and_unsupported_inputs) ... ok
+test_size_limit_and_upload_name_are_bounded (tests.test_offline.AudioDecodeTests.test_size_limit_and_upload_name_are_bounded) ... ok
+test_dc_is_reported_and_removed_for_spectral_statistics (tests.test_offline.DSPTests.test_dc_is_reported_and_removed_for_spectral_statistics) ... ok
+test_fft_and_psd_peak_match_one_kilohertz_tone (tests.test_offline.DSPTests.test_fft_and_psd_peak_match_one_kilohertz_tone) ... ok
+test_silence_has_no_fabricated_dbfs_value (tests.test_offline.DSPTests.test_silence_has_no_fabricated_dbfs_value) ... ok
+test_windowed_sinc_resampling_preserves_duration_and_rejects_alias_band (tests.test_offline.DSPTests.test_windowed_sinc_resampling_preserves_duration_and_rejects_alias_band) ... ok
+test_in_process_http_handlers_cover_upload_history_and_delete (tests.test_offline.PersistenceWorkflowTests.test_in_process_http_handlers_cover_upload_history_and_delete) ... ok
+test_measurements_history_export_restart_and_delete (tests.test_offline.PersistenceWorkflowTests.test_measurements_history_export_restart_and_delete) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.637s
+
+OK

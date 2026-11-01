@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1220">
+  <title>AegisVoice — local audio inspection</title>
+  <link rel="stylesheet" href="/static/styles.css?v=20261029l">
+  <script src="/static/app.js?v=20261029l" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="AegisVoice home">
+      <span class="brand-mark" aria-hidden="true">A</span>
+      <span><strong>AegisVoice</strong><small>LOCAL AUDIO INSPECTION</small></span>
+    </a>
+    <div class="local-pill"><span aria-hidden="true"></span> Processing stays on this device</div>
+  </header>
+
+  <main id="top" class="shell">
+    <section class="intro">
+      <div class="eyebrow">AUDIO FORENSICS <span> / </span> LOCAL DSP LAB</div>
+      <h1>Hear the signal.<br><em>See what the data says.</em></h1>
+      <p class="lede">A pre-verification quality gate that checks whether a speech signal is human-produced before it is trusted. Explore the signal, inspect each feature, and train local models from labels you trust.</p>
+      <p class="intro-caveat">Experimental signal cues are a review aid, not proof that a voice is human or synthetic.</p>
+    </section>
+
+    <nav class="tabs" aria-label="Workspace sections">
+      <button class="tab active" type="button" data-view="analyze" aria-current="page">Analyze</button>
+      <button class="tab" type="button" data-view="history">History <span id="history-count" class="count">0</span></button>
+      <button class="tab" type="button" data-view="training">Train model</button>
+      <button class="tab" type="button" data-view="method">Method</button>
+      <div class="tab-spacer"></div>
+      <span id="service-state" class="service-state">Checking local service…</span>
+    </nav>
+
+    <section id="view-analyze" class="view">
+      <div class="work-grid">
+        <section class="panel upload-panel" aria-labelledby="upload-title">
+          <div class="panel-head">
+            <div><div class="eyebrow">01 / INPUT</div><h2 id="upload-title">Choose a recording</h2></div>
+            <span class="step-number">01</span>
+          </div>
+          <form id="upload-form">
+            <label class="dropzone" for="audio-file" id="dropzone" tabindex="0" role="button" aria-label="Choose or drop an audio file">
+              <span class="upload-icon" aria-hidden="true">↑</span>
+              <span class="drop-title">Drop an audio file here</span>
+              <span class="drop-subtitle">or <u>browse files</u></span>
+              <span class="file-types">WAV · FLAC · OGG/Opus · AIFF · MP3 · M4A · AAC · WMA · WebM · up to 50 MB</span>
+            </label>
+            <input id="audio-file" name="file" type="file" accept=".wav,.flac,.ogg,.oga,.opus,.aiff,.aif,.mp3,.m4a,.mp4,.aac,.wma,.webm,.mka,audio/*" required tabindex="-1">
+            <div id="selected-file" class="selected-file" hidden></div>
+            <audio id="audio-preview" class="audio-preview" controls preload="metadata" hidden aria-label="Preview selected audio"></audio>
+            <div class="preview-tools"><button id="replay-preview" class="quiet-button" type="button" hidden disabled>Replay audio</button><button id="prepare-preview" class="quiet-button" type="button" hidden>Retry playable preview</button><span id="preview-status" role="status" aria-live="polite"></span></div>
+            <button id="synthetic-test-tone" class="quiet-button test-tone-button" type="button">Generate synthetic test tone</button>
+            <p class="test-tone-note">A DSP playback check only. It is not synthetic speech and is never added to training.</p>
+            <button class="primary-button" id="analyze-button" type="submit" disabled>Calculate signal measurements <span aria-hidden="true">→</span></button>
+          <p class="privacy-note"><span aria-hidden="true">◈</span> Private by design · audio analyzed in memory · only measurements and file hash are saved</p>
+          </form>
+          <div id="upload-status" class="status-line" role="status" aria-live="polite"></div>
+        </section>
+
+        <aside class="panel model-panel" aria-labelledby="model-title">
+          <div class="eyebrow">DETECTOR STATUS</div>
+          <h2 id="model-title">Classifier unavailable</h2>
+          <div class="status-card"><span class="status-dot" aria-hidden="true"></span><span id="model-status-copy">Checking the local model and saved training labels…</span></div>
+          <p id="model-description">A user-trained model requires verified labels and grouped evaluation. Any trained score remains experimental until externally validated.</p>
+          <div class="panel-rule"></div>
+          <div class="mini-row"><span>Current analysis</span><strong id="model-analysis-mode">Checking…</strong></div>
+          <div class="mini-row"><span>Model score</span><strong id="model-score-mode">Checking…</strong></div>
+          <div class="mini-row"><span>Evidence explanation</span><strong>Local · optional providers</strong></div>
+          <div class="mini-row"><span>Trained samples</span><strong id="model-dataset-count">Checking…</strong></div>
+          <div class="mini-row"><span>Decision policy</span><strong id="model-decision-mode">Checking…</strong></div>
+          <a class="quiet-link" href="#method" data-open-view="method">Read what this means <span aria-hidden="true">↗</span></a>
+        </aside>
+      </div>
+
+      <section id="result-section" class="panel result-panel" hidden aria-labelledby="result-title">
+        <div class="result-banner">
+          <div class="result-mark" aria-hidden="true">?</div>
+          <div class="result-copy"><div class="eyebrow">ANALYSIS COMPLETE · <span id="result-time"></span></div><h2 id="result-title">INCONCLUSIVE</h2><p id="result-reason"></p></div>
+          <button id="export-report-html" class="secondary-button" type="button">Save report · HTML</button>
+          <button id="delete-current" class="text-button danger-button" type="button">Delete this record</button>
+        </div>
+        <div id="quality-warnings" class="warning-list" aria-live="polite"></div>
+        <section id="input-quality-panel" class="input-quality-panel" aria-labelledby="input-quality-title">
+          <div id="input-quality-ring" class="input-quality-ring" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Technical input quality score"><strong id="input-quality-value">—</strong><span>/100</span></div>
+          <div><div class="eyebrow">TECHNICAL QUALITY · NOT MODEL CONFIDENCE</div><h3 id="input-quality-title">Input signal quality</h3><p id="input-quality-note">Quality factors will appear after analysis.</p><ul id="input-quality-factors"></ul></div>
+        </section>
+        <section class="local-explanation-panel panel" aria-labelledby="local-explanation-title">
+          <div class="explanation-intro"><div class="eyebrow">EVIDENCE EXPLANATION</div><h3 id="local-explanation-title">Explain these DSP measurements</h3><p id="local-explanation-status">Local explanations stay on this device. Online providers are optional and require your explicit approval.</p></div>
+          <div class="explanation-controls">
+            <label class="text-label">Provider<select id="explanation-provider"><option value="local">Local explanation</option><option value="gemini">Google Gemini API</option><option value="nvidia">NVIDIA NIM · Nemotron and other models</option><option value="openrouter">OpenRouter · free and paid models</option><option value="openai">OpenAI API · GPT models</option><option value="anthropic">Anthropic Claude API · metered</option></select></label>
+            <p class="small-note provider-field provider-common-note" hidden>Each provider needs its own API key and account access to the chosen model. Quotas, credits, billing, regions, and free access differ. ChatGPT or Claude web access does not automatically mean API access or free API usage.</p>
+            <div id="provider-access-guide" class="provider-access-guide" hidden><p id="provider-access-text"></p><div id="provider-access-links" class="provider-access-links"></div></div>
+            <label class="text-label provider-field" id="explanation-model-wrap" hidden>Model version<select id="explanation-model" disabled><option value="">Load the model catalog to choose a model…</option></select></label>
+            <p id="model-pricing-note" class="small-note provider-field" hidden></p>
+            <label class="text-label provider-field" id="explanation-key-wrap" hidden><span id="provider-key-label">Provider API key</span><input id="explanation-api-key" type="password" maxlength="500" autocomplete="new-password" spellcheck="false" placeholder="Paste a key for the selected provider"></label>
+            <label class="text-label provider-field" id="anthropic-workspace-wrap" hidden>Anthropic workspace ID · optional<input id="anthropic-workspace-id" type="text" maxlength="120" autocomplete="off" spellcheck="false" placeholder="Only needed for a key not scoped to one workspace"></label>
+            <label id="model-discovery-consent-wrap" class="local-explanation-toggle-label provider-field" hidden><input id="model-discovery-consent" type="checkbox"> Allow AegisVoice to send this key to the selected provider to load its model catalog. No audio or DSP measurements are sent for this check.</label>
+            <button id="load-provider-models" class="quiet-button provider-field" type="button" hidden disabled>Load model catalog</button>
+            <span id="model-catalog-status" class="small-note provider-field" hidden role="status" aria-live="polite"></span>
+            <label id="explanation-consent-wrap" class="local-explanation-toggle-label" hidden><input id="explanation-consent" type="checkbox"> Send only the listed DSP measurements to this provider</label>
+            <p id="explanation-privacy" class="small-note" hidden>Audio, file name, history, model score, and verdict are not sent. The key is kept only in this page and cleared after the request. Free-model quotas, provider access, and terms differ; check the provider note above before using an API model.</p>
+            <button id="explain-locally" class="secondary-button" type="button" disabled>Explain evidence</button>
+            <button id="copy-dsp-for-chat" class="quiet-button" type="button" disabled>Copy DSP evidence for AI chat</button>
+            <span id="copy-dsp-status" class="small-note" role="status" aria-live="polite"></span>
+            <span class="small-note">Paste it yourself into <a href="https://gemini.google.com/" target="_blank" rel="noreferrer">Gemini</a>, <a href="https://chatgpt.com/" target="_blank" rel="noreferrer">ChatGPT</a>, or <a href="https://claude.ai/" target="_blank" rel="noreferrer">Claude</a>. This does not send audio or retrieve their reply automatically.</span>
+          </div>
+          <div id="local-explanation" class="local-explanation-output" hidden aria-live="polite"></div>
+        </section>
+        <div class="result-insight-grid">
+          <article class="insight-card score-card"><div id="result-score-label" class="eyebrow">SYNTHETIC EVIDENCE INDEX</div><div id="result-score" class="evidence-index-value">—<span>/ 11</span></div><p id="result-score-note">No trained detector is loaded. A score cannot be reported.</p><span id="result-score-tag" class="insight-tag">UNAVAILABLE · NOT A ZERO SCORE</span><div class="class-output-heading">Raw class outputs · 0–1 scale <span>uncalibrated, not probabilities</span></div><div class="class-output-grid"><div class="class-output" id="human-output-card"><div><span>Human</span><strong id="human-output-value">—</strong></div><div class="class-output-track"><i id="human-output-bar"></i></div></div><div class="class-output" id="synthetic-output-card"><div><span>Synthetic</span><strong id="synthetic-output-value">—</strong></div><div class="class-output-track"><i id="synthetic-output-bar"></i></div></div></div><p id="class-output-summary" class="class-output-summary">Train a model to compare its raw output for both classes.</p></article>
+          <article class="insight-card pipeline-card"><div class="eyebrow">LOCAL ANALYSIS PIPELINE</div><div class="pipeline-steps" aria-label="Analysis stages"><span data-pipeline-step="decode"><b>01</b> <span id="pipeline-decode-label">Decode</span></span><i aria-hidden="true">→</i><span data-pipeline-step="validate"><b>02</b> <span id="pipeline-validate-label">Validate</span></span><i aria-hidden="true">→</i><span data-pipeline-step="dsp"><b>03</b> <span id="pipeline-dsp-label">DSP</span></span><i aria-hidden="true">→</i><span data-pipeline-step="model"><b>04</b> <span id="pipeline-model-label">Model</span></span><i aria-hidden="true">→</i><span data-pipeline-step="report" title="Analysis report saved to local history"><b>05</b> <span id="pipeline-report-label" title="Analysis report saved to local history">Saved</span></span></div><p id="pipeline-result-note">Stages update after analysis completes. DSP measurements run locally even when no classifier is trained.</p></article>
+        </div>
+        <section class="panel resemble-panel" aria-labelledby="resemble-title">
+          <div><div class="eyebrow">OPTIONAL EXTERNAL DETECTOR</div><h3 id="resemble-title">Compare with Resemble Detect</h3><p>Separate from your local model and DSP report. This sends the original audio to Resemble. AegisVoice requests Zero Retention Mode; the provider still processes the audio under its own terms. Usage may cost money. Your Resemble token must have Deepfake Detect API access enabled; a token that only supports Synthesis may not be enough.</p><p class="small-note">Use a Resemble token here, not your Google AI Studio key. AegisVoice keeps the token only in this page for the check and optional report questions; use Clear token when finished. It is not saved by AegisVoice.</p></div>
+          <div class="resemble-controls">
+            <label class="text-label">Resemble API token<input id="resemble-api-key" type="password" maxlength="500" autocomplete="new-password" spellcheck="false" placeholder="Paste a Resemble token"></label>
+            <button id="clear-resemble-key" class="quiet-button" type="button">Clear token</button>
+            <label class="local-explanation-toggle-label"><input id="resemble-consent" type="checkbox"> I understand this sends the analyzed audio to Resemble for external detection</label>
+            <fieldset class="resemble-options"><legend>Optional report sections</legend>
+              <label class="local-explanation-toggle-label"><input id="resemble-intelligence" type="checkbox"> Include Intelligence report (speaker, language, emotion, and content signals)</label>
+              <label class="local-explanation-toggle-label"><input id="resemble-watermark" type="checkbox"> Check watermark / SynthID (may add a paid detection charge)</label>
+              <label class="local-explanation-toggle-label"><input id="resemble-source-tracing" type="checkbox"> Include audio source tracing when available</label>
+              <label class="local-explanation-toggle-label"><input id="resemble-visualize" type="checkbox"> Request a detection visualization when supported</label>
+              <label class="local-explanation-toggle-label"><input id="resemble-infer-intelligence" type="checkbox"> Let a strong Intelligence finding escalate a non-fake verdict</label>
+              <p class="small-note">The last option requires Intelligence. Review the report before relying on it; this changes Resemble's verdict logic.</p>
+            </fieldset>
+            <button id="run-resemble" class="secondary-button" type="button" disabled>Run Resemble check</button><button id="check-resemble" class="quiet-button" type="button" hidden disabled>Check result status</button>
+            <a class="quiet-link" href="https://app.resemble.ai/hub/api" target="_blank" rel="noreferrer">Open Resemble API tokens ↗</a>
+            <a class="quiet-link" href="https://app.resemble.ai/hub/detect-playground" target="_blank" rel="noreferrer">Open Detect playground ↗</a>
+            <a class="quiet-link" href="https://docs.resemble.ai/api-reference/deepfake-detection/create-detection" target="_blank" rel="noreferrer">Read the Detect API docs ↗</a>
+          </div>
+          <div id="resemble-result" class="resemble-result" hidden aria-live="polite"></div>
+          <section id="resemble-ask-panel" class="resemble-ask-panel" hidden aria-labelledby="resemble-ask-title">
+            <div><h4 id="resemble-ask-title">Ask Intelligence about this report</h4><p>Questions and the completed detection report are sent to Resemble. This uses its report-question service, separate from the local DSP explanation; availability and usage follow your Resemble account.</p></div>
+            <label class="text-label" for="resemble-question">Your question<textarea id="resemble-question" maxlength="1000" rows="3" placeholder="For example: Summarize the result and explain what evidence supports the label."></textarea></label>
+            <label class="local-explanation-toggle-label"><input id="resemble-question-consent" type="checkbox"> I understand this sends my question and report context to Resemble Intelligence</label>
+            <div class="resemble-question-actions"><button id="ask-resemble" class="secondary-button" type="button" disabled>Ask Intelligence</button><button id="check-resemble-answer" class="quiet-button" type="button" hidden disabled>Check answer</button></div>
+            <div id="resemble-question-status" class="small-note" role="status" aria-live="polite"></div>
+            <div id="resemble-conversation" class="resemble-conversation" aria-live="polite"></div>
+          </section>
+        </section>
+        <div class="metric-grid" id="metric-grid"></div>
+        <section class="evidence-panel" aria-labelledby="evidence-title">
+          <div class="evidence-heading"><div><div class="eyebrow">MEASURED SIGNAL EVIDENCE</div><h3 id="evidence-title">What the classifier saw</h3></div><span id="evidence-note">DSP measurements describe this recording; they do not prove its source.</span></div>
+          <div id="evidence-grid" class="evidence-grid"></div>
+        </section>
+        <div class="chart-grid">
+          <section class="chart-card"><div class="chart-head"><h3>Waveform</h3><span>Amplitude · normalized PCM</span></div><div id="waveform-chart" class="chart" role="img" aria-label="Waveform chart"></div></section>
+          <section class="chart-card"><div class="chart-head"><h3>Mean power spectrum</h3><span id="spectrum-meta">Power per hertz</span></div><div id="spectrum-chart" class="chart" role="img" aria-label="Mean power spectral density chart"></div></section>
+          <section class="chart-card spectrogram-card"><div class="chart-head"><h3>STFT spectrogram</h3><span>Time × frequency · logarithmic frequency · relative level</span></div><canvas id="spectrogram-chart" class="spectrogram-chart" role="img" aria-label="Log-frequency short-time Fourier transform spectrogram; color shows relative signal power"></canvas><div class="spectrogram-axis"><span>Higher frequency ↑</span><span>Time →</span><span>Brighter = more energy</span></div></section>
+        </div>
+        <details class="details-block" open><summary>Show methods, model evaluation, and limitations</summary><div id="technical-details"></div></details>
+      </section>
+    </section>
+
+    <section id="view-history" class="view" hidden>
+      <div class="section-heading"><div><div class="eyebrow">SAVED ANALYSES</div><h2>History</h2><p>Reports persist in the local SQLite database. Audio files are not retained.</p></div><div class="export-actions"><a class="secondary-button" href="/api/export/history.csv">Export CSV ↓</a><a class="secondary-button" href="/api/export/history.json">Export JSON ↓</a></div></div>
+      <section class="panel history-panel"><div id="history-empty" class="empty-state">No analyses saved yet. Your results will appear here.</div><div id="history-list" class="history-list"></div></section>
+    </section>
+
+    <section id="view-training" class="view" hidden>
+      <div class="section-heading"><div><div class="eyebrow">SUPERVISED LEARNING · LOCAL</div><h2>Train from labeled audio</h2><p>Import folders or a CSV manifest. Audio is converted to DSP features and discarded.</p></div></div>
+      <div class="training-grid">
+        <section class="panel training-panel">
+          <h3>1 · Select a dataset folder</h3>
+          <p>Folder names should identify the class (for example <code>Real/</code> and <code>Fake/</code>). Or choose a CSV with <code>filename,label</code> columns and select the matching audio files.</p>
+          <label class="file-picker">Audio folder <input id="training-folder" type="file" webkitdirectory directory multiple accept="audio/*,.wav,.flac,.ogg,.opus,.aiff,.mp3,.m4a,.aac,.wma,.webm"></label>
+          <label class="file-picker">Human audio files <input id="human-files" type="file" multiple accept="audio/*,.wav,.flac,.ogg,.opus,.aiff,.mp3,.m4a,.aac,.wma,.webm"></label>
+          <label class="file-picker">AI-generated audio files <input id="synthetic-files" type="file" multiple accept="audio/*,.wav,.flac,.ogg,.opus,.aiff,.mp3,.m4a,.aac,.wma,.webm"></label>
+          <label class="file-picker">CSV label manifest (optional) <input id="training-csv" type="file" accept=".csv,text/csv"></label>
+          <a class="quiet-link" href="/static/training-template.csv" download>Download CSV template ↓</a>
+          <label class="text-label">Dataset name <input id="dataset-name" type="text" maxlength="160" value="User supplied dataset"></label>
+          <div class="training-actions"><button id="import-training" class="primary-button" type="button">Import labeled audio</button><span id="training-progress" role="status" aria-live="polite"></span></div>
+        </section>
+        <aside class="panel training-panel"><div class="eyebrow">DATASET STATUS</div><h3>Current trusted labels</h3><div id="training-counts" class="training-counts">Checking saved labels…</div><p id="training-warning">Confirm a history result as Human or AI, then train from all imported and confirmed labels. Predictions are never used as labels.</p>
+          <label class="text-label">Classifier family<select id="model-algorithm"><option value="logistic_regression">Logistic regression</option><option value="svm_rbf">Support vector machine (RBF)</option><option value="random_forest">Random forest</option><option value="gradient_boosting">Gradient boosting</option><option value="small_neural_network">Small neural network (MLP)</option></select></label>
+          <label class="text-label">Feature set<select id="feature-set"><option value="advanced">Extended DSP + MFCC/LFCC/CQCC-style + phase</option><option value="basic">Basic 11-feature DSP</option></select></label>
+          <label class="text-label">Training labels<select id="training-source"><option value="all">All imported + confirmed labels</option><option value="confirmed_history">Confirmed History results only</option></select></label>
+          <label class="text-label threshold-control">Synthetic decision threshold <span class="threshold-readout"><output id="threshold-value">50%</output><span>raw score cutoff (not calibrated)</span></span><input id="model-threshold" type="range" min="20" max="80" step="1" value="50" aria-describedby="threshold-help"></label>
+          <p id="threshold-help" class="small-note">Lower cutoffs produce more synthetic labels; higher cutoffs produce fewer. This changes the decision rule, not the model's measured accuracy.</p>
+          <button id="save-threshold" class="secondary-button" type="button" disabled>Save decision threshold</button>
+          <div class="model-actions"><button id="compare-models" class="secondary-button" type="button">Compare model families</button><button id="train-model" class="secondary-button" type="button">Train selected model</button></div>
+          <button id="reset-model" class="danger-outline-button" type="button">Reset trained model</button><p class="small-note">Reset removes only the saved checkpoint. Your labels stay available so you can retrain.</p>
+          <a class="secondary-button export-model-link" href="/api/export/model.json">Download model inspection JSON ↓</a></aside>
+      </div>
+      <section class="panel model-comparison-panel"><h3>Model family comparison</h3><p>Grouped holdout screening only; a small dataset can make all models look better or worse than they generalize.</p><div id="model-comparison">Select Compare model families to benchmark Logistic Regression, SVM, Random Forest, Gradient Boosting, and a small neural network on the same held-out groups.</div></section>
+      <section class="panel training-results"><h3>Held-out evaluation</h3><div id="training-results">No trained model yet.</div></section>
+    </section>
+
+    <section id="view-method" class="view" hidden>
+      <div class="section-heading"><div><div class="eyebrow">INTERPRETATION GUIDE</div><h2>What the measurements can tell you</h2><p>They describe the digital signal. They do not establish who or what produced it.</p></div></div>
+      <div class="method-grid">
+        <article class="panel method-card"><span class="method-index">01</span><h3>Decode and validate</h3><p>Full mode decodes WAV, FLAC, OGG/Opus, AIFF, MP3, M4A/MP4, AAC, WMA, and WebM locally. It checks duration, sample rate, channels, file size, and finite samples before analysis. No uploaded audio is retained.</p></article>
+        <article class="panel method-card"><span class="method-index">02</span><h3>Canonicalize audio</h3><p>Channels are averaged to mono and resampled to 16 kHz. The report keeps the original rate, channel count, format, and stereo fold-down level so input changes are visible.</p></article>
+        <article class="panel method-card"><span class="method-index">03</span><h3>Time-domain DSP</h3><p>RMS and peak levels, DC offset, clipping fraction, and relative low-energy-frame fraction describe amplitude and recording quality.</p></article>
+        <article class="panel method-card"><span class="method-index">04</span><h3>STFT · CQT-style analysis</h3><p>25 ms Hann STFT frames and 10 ms hops produce spectral centroid, rolloff, flatness, entropy, flux, and PSD. A log-frequency filter bank adds CQT-style bands; it is clearly marked as an approximation, not a full CQT.</p></article>
+        <article class="panel method-card"><span class="method-index">05</span><h3>Speech-quality gates</h3><p>Short, quiet, clipped, anti-phase, or strongly tonal inputs receive warnings. DTMF is a tone sequence rather than speech, so the voice classifier withholds its class result.</p></article>
+        <article class="panel method-card"><span class="method-index">06</span><h3>Adaptive ML from trusted labels</h3><p>Human/AI labels are added only after explicit confirmation or dataset import. Compare Logistic Regression, SVM, Random Forest, Gradient Boosting, and a small MLP. Prediction history is never silently treated as ground truth.</p></article>
+        <article class="panel method-card"><span class="method-index">07</span><h3>Training and evaluation</h3><p>Training uses explicit human/synthetic labels, at least 16 recordings, and at least 4 recording groups per class. A deterministic grouped 25% holdout reports accuracy, balanced accuracy, ROC AUC, confusion matrix, and group counts.</p></article>
+        <article class="panel method-card"><span class="method-index">08</span><h3>Decision policy</h3><p>The 1–11 synthetic evidence index is mapped from an uncalibrated model output. The user-selected threshold controls the label. It is not a probability; speech-quality blockers and non-speech tones stay INCONCLUSIVE.</p></article>
+        <article class="panel method-card"><span class="method-index">09</span><h3>Pitch · HNR · jitter · shimmer</h3><p>Autocorrelation estimates F0, voiced ratio, and a harmonic-to-noise proxy. Jitter and shimmer are short-frame proxies, not clinical voice measurements. They depend on speech content and recording conditions.</p></article>
+        <article class="panel method-card"><span class="method-index">10</span><h3>MFCC · LFCC · CQCC-style</h3><p>Log-filter-bank cepstra are summarized alongside linear-frequency and mel-frequency cepstra. The CQCC-style path uses geometrically spaced STFT filters; it does not claim a full constant-Q transform.</p></article>
+        <article class="panel method-card"><span class="method-index">12</span><h3>Phase-aware and spectral cues</h3><p>Residual STFT phase, group-delay outliers, spectral slope, entropy, crest, flux, and band energy are measured and shown. Their influence varies with codecs, microphones, edits, and content.</p></article>
+        <article class="panel method-card"><span class="method-index">13</span><h3>Measurement explanations</h3><p>Explain DSP evidence locally, or explicitly opt in to send an allowlisted set of measurements to Gemini or OpenAI. No audio, filename, history, model score, or verdict is sent.</p></article>
+        <article class="panel method-card"><span class="method-index">11</span><h3>Input quality score</h3><p>The 0–100 indicator summarizes technical checks such as level, clipping, silence, duration, and stereo cancellation. It is not a detector confidence, class probability, or measure of model accuracy.</p></article>
+        <article class="panel method-card caution-card"><span class="method-index">!</span><h3>Current boundary</h3><p>The model learns only explicitly labeled recordings in this local project. Small or imbalanced data, uncertain labels, speaker/generator overlap, codec differences, and new synthesis methods can produce misleading scores. External models are listed for research but are not installed here.</p></article>
+      </div>
+      <section class="feature-guide-panel method-feature-guide" aria-labelledby="feature-guide-title">
+        <div class="feature-guide-heading"><div><span class="feature-guide-kicker">METHOD · FEATURE GUIDE</span><h3 id="feature-guide-title">Plain-English feature guide</h3></div><span>What each measurement means and why it matters</span></div>
+        <div class="feature-guide-grid">
+          <article class="feature-card"><h4>F0 / Pitch</h4><p>How fast vocal-fold vibration appears to repeat; track its movement over time.</p><small>Estimated from short-frame autocorrelation.</small></article>
+          <article class="feature-card"><h4>Jitter</h4><p>Small changes in estimated pitch period from one voiced frame to the next.</p><small>Proxy only; low is not automatically fake.</small></article>
+          <article class="feature-card"><h4>Shimmer</h4><p>Frame-level loudness variation across nearby voiced frames.</p><small>Microphone and speech dependent.</small></article>
+          <article class="feature-card"><h4>HNR</h4><p>Compares periodic harmonic structure with noise-like energy.</p><small>A proxy; very clean is not automatically synthetic.</small></article>
+          <article class="feature-card"><h4>Spectral centroid</h4><p>A rough spectral “center of mass”; higher values mean more high-frequency energy.</p><small>Microphone dependent.</small></article>
+          <article class="feature-card"><h4>Spectral rolloff</h4><p>Frequency below which most measured spectral energy lies.</p><small>Useful for comparing bandwidth changes.</small></article>
+          <article class="feature-card"><h4>Spectral flatness</h4><p>How tone-like versus noise-like the spectrum is.</p><small>Compare patterns, not one value.</small></article>
+          <article class="feature-card"><h4>Spectral flux</h4><p>How quickly the spectrum changes from frame to frame.</p><small>Describes temporal texture.</small></article>
+          <article class="feature-card"><h4>Voiced ratio</h4><p>Fraction of short frames that appear pitch-bearing.</p><small>Speech-content dependent.</small></article>
+          <article class="feature-card"><h4>Spectral entropy</h4><p>How spread out spectral energy is; a description of complexity.</p><small>Useful as a pattern, not a verdict.</small></article>
+          <article class="feature-card"><h4>Spectral slope</h4><p>How spectral energy falls or rises with frequency.</p><small>Affected by microphone and channel.</small></article>
+          <article class="feature-card"><h4>Spectral crest</h4><p>Compares the strongest spectral peak with average energy.</p><small>Compare with other features.</small></article>
+          <article class="feature-card"><h4>RMS mean / variation</h4><p>Tracks signal energy and how much loudness changes across frames.</p><small>Recording-level dependent.</small></article>
+          <article class="feature-card"><h4>MFCC / LFCC</h4><p>Cepstral summaries from mel-spaced and linear-spaced STFT filter banks.</p><small>Compact timbre descriptors; not standalone evidence.</small></article>
+          <article class="feature-card"><h4>CQCC-style</h4><p>Log-frequency filter-bank cepstra with approximately constant-Q spacing.</p><small>CQT-style approximation, not a full constant-Q transform.</small></article>
+          <article class="feature-card"><h4>Phase-aware STFT</h4><p>Measures residual phase change after removing the expected FFT-bin advance.</p><small>Sensitive to codec, edits, and recording conditions.</small></article>
+          <article class="feature-card"><h4>STFT spectrogram</h4><p>Shows how signal energy is distributed across frequency as the recording changes over time.</p><small>Relative display only; patterns do not prove whether speech is human or generated.</small></article>
+          <article class="feature-card"><h4>Envelope modulation</h4><p>Describes slow changes in short-frame loudness, including modulation energy in the 2–8 Hz range.</p><small>Speech-content and recording dependent; shown for inspection, not used by the saved model.</small></article>
+        </div>
+        <p class="feature-guide-foot">STFT uses 25 ms Hann frames and 10 ms hops. Choose Basic or Extended in Train model; each report lists the exact feature set used.</p>
+      </section>
+      <section class="panel catalog-link-panel"><div><div class="eyebrow">RESEARCH RESOURCES</div><h3>Models and labeled datasets</h3></div><p>Open the linked reference catalog, see what is available upstream, and follow the local import path for datasets.</p><a class="secondary-button" href="/model-datasets">Open model & dataset catalog →</a></section>
+    </section>
+
+    <footer><span>AEGISVOICE · LOCAL FIRST</span><span>For research and inspection. Not a sole basis for high-impact decisions.</span></footer>
+  </main>
+</body>
+</html>
