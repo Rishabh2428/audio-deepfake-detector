@@ -94,44 +94,134 @@ flowchart TD
 
 ## 🔬 Mathematical Formulations & DSP Invariants
 
-The extraction engine operates on frames of length $N = 400$ samples (25 ms at $f_s = 16\text{ kHz}$) with a frame hop of $H = 160$ samples (10 ms), windowed by a periodic Hann window $w[n] = 0.5 \left(1 - \cos\frac{2\pi n}{N-1}\right)$.
+The extraction engine operates on frames of length $N = 400$ samples (25 ms at $f_s = 16\text{ kHz}$) with a frame hop of $H = 160$ samples (10 ms), windowed by a periodic Hann window:
+
+$$
+w[n] = 0.5 \left(1 - \cos\frac{2\pi n}{N-1}\right), \quad 0 \le n < N
+$$
+
+---
 
 ### 1. Spectral Analysis & Power Spectral Density (PSD)
-For frame $t$, the short-time Fourier transform is computed via a 512-point real FFT:
-$$X_t[k] = \sum_{n=0}^{N-1} (x[tH + n] - \mu) w[n] e^{-j \frac{2\pi k n}{512}}, \quad k = 0, \dots, 256$$
-The single-sided periodogram is normalized as:
-$$P_t[k] = \frac{c[k] |X_t[k]|^2}{f_s \sum_{n=0}^{N-1} w[n]^2}, \quad c[k] = \begin{cases} 1, & k = 0 \text{ (DC) or } 256 \text{ (Nyquist)} \\ 2, & 1 \le k < 256 \end{cases}$$
 
-* **Spectral Centroid (Hz):**
-  $$f_{\text{centroid}} = \frac{\sum_{k} f_k P_t[k]}{\sum_{k} P_t[k]}$$
-* **Wiener Entropy (Spectral Flatness):** Identifies artificial white noise or robotic vocoder buzz:
-  $$\mathrm{SFM} = \frac{\exp\left(\frac{1}{K} \sum_{k=0}^{K-1} \ln \max(P_t[k], \varepsilon)\right)}{\frac{1}{K} \sum_{k=0}^{K-1} P_t[k]}$$
-* **Shannon Spectral Entropy:** Measures spectral concentration across frequency bins:
-  $$H_{\text{spectral}} = -\frac{1}{\ln K} \sum_{k=0}^{K-1} p_t[k] \ln p_t[k], \quad p_t[k] = \frac{P_t[k]}{\sum_j P_t[j]}$$
-* **Spectral Flux:** Euclidean distance between consecutive normalized magnitude spectra:
-  $$\text{Flux}_t = \| \tilde{X}_t - \tilde{X}_{t-1} \|_2, \quad \tilde{X}_t = \frac{|X_t|}{\||X_t|\|_2}$$
+For frame $t$, the short-time Fourier transform is computed using a 512-point real FFT on the mean-subtracted canonical frame sequence ($x_c[n] = x[tH + n] - \mu$):
 
-### 2. Cepstral Invariants (MFCC, LFCC, CQT-Style)
-Filter-bank energies are compressed through logarithmic mapping and decorrelated using a Type-II Discrete Cosine Transform (DCT-II):
-$$c_m = \sum_{m'=0}^{M-1} \log(E_{m'}) \cos\left[ \frac{\pi m}{M} \left(m' + \frac{1}{2}\right) \right]$$
-* **MFCC (Mel-Frequency Cepstral Coefficients):** 27 triangular filters spaced logarithmically on the Mel scale ($C_1 - C_4$).
+$$
+X_t[k] = \sum_{n=0}^{N-1} (x[tH + n] - \mu) \, w[n] \, e^{-j \frac{2\pi k n}{512}}, \quad k = 0, 1, \dots, 256
+$$
+
+The single-sided periodogram is normalized by the discrete window energy $\sum w^2[n]$:
+
+$$
+P_t[k] = \frac{c[k] \, |X_t[k]|^2}{f_s \sum_{n=0}^{N-1} w[n]^2}
+$$
+
+where the scaling factor $c[k]$ accounts for single-sided Nyquist power folding:
+
+$$
+c[k] = \begin{cases} 
+1, & k = 0 \text{ (DC) or } k = 256 \text{ (Nyquist)} \\ 
+2, & 1 \le k < 256 
+\end{cases}
+$$
+
+---
+
+### 2. Spectral Descriptors & Timbre Invariants
+
+#### Spectral Centroid ($f_{\text{centroid}}$)
+The power-weighted center of spectral mass in Hertz, measuring the brightness and frequency balance of the frame:
+
+$$
+f_{\text{centroid}} = \frac{\sum_{k=0}^{K-1} f_k \, P_t[k]}{\sum_{k=0}^{K-1} P_t[k]}
+$$
+
+#### Wiener Entropy / Spectral Flatness Measure ($\text{SFM}$)
+Calculates the ratio of the geometric mean to the arithmetic mean of the power spectrum to identify artificial white noise, vocoder buzz, or robotic flatness:
+
+$$
+\text{SFM} = \frac{\exp\left( \frac{1}{K} \sum_{k=0}^{K-1} \ln \max(P_t[k], \varepsilon) \right)}{\frac{1}{K} \sum_{k=0}^{K-1} P_t[k]}
+$$
+
+#### Shannon Spectral Entropy ($H_{\text{spectral}}$)
+Measures the concentration or dispersion of spectral energy across frequency bins:
+
+$$
+H_{\text{spectral}} = -\frac{1}{\ln K} \sum_{k=0}^{K-1} p_t[k] \ln p_t[k], \quad p_t[k] = \frac{P_t[k]}{\sum_{j=0}^{K-1} P_t[j]}
+$$
+
+#### Spectral Flux ($\text{Flux}_t$)
+Quantifies the rate of local spectral variation by measuring the Euclidean distance between successive normalized magnitude spectra:
+
+$$
+\text{Flux}_t = \left\lVert \tilde{X}_t - \tilde{X}_{t-1} \right\rVert_2, \quad \tilde{X}_t = \frac{|X_t|}{\left\lVert |X_t| \right\rVert_2}
+$$
+
+---
+
+### 3. Cepstral Invariants (MFCC, LFCC, CQT-Style)
+
+Filter-bank log energies are decorrelated using a Type-II Discrete Cosine Transform (DCT-II):
+
+$$
+c_m = \sum_{m'=0}^{M-1} \log(E_{m'}) \cos\left[ \frac{\pi m}{M} \left(m' + \frac{1}{2}\right) \right]
+$$
+
+* **MFCC (Mel-Frequency Cepstral Coefficients):** 27 triangular filters spaced on the non-linear Mel scale ($C_1 - C_4$) capturing vocal tract filter shape.
 * **LFCC (Linear Frequency Cepstral Coefficients):** 27 linearly spaced triangular filters capturing high-frequency vocoder artifacts ($C_1 - C_4$).
-* **CQT-Style Cepstra:** 48 geometrically spaced filters approximating Constant-Q transform resolution.
+* **CQT-Style Cepstra:** 48 geometrically spaced triangular STFT filters approximating Constant-Q transform resolution.
 
-### 3. Prosody, Pitch & Micro-Fluctuations
-* **Autocorrelation Pitch ($F_0$):** Computed over voiced segments searching the lag window corresponding to $70\text{ Hz} \le F_0 \le 400\text{ Hz}$:
-  $$R_x(\tau) = \frac{\sum_{n} x[n] x[n+\tau]}{\sqrt{\sum_n x^2[n] \sum_n x^2[n+\tau]}}$$
-* **Harmonic-to-Noise Ratio (HNR Proxy):** Derived from peak autocorrelation energy:
-  $$\mathrm{HNR} \approx 10 \log_{10} \left( \frac{R_{\max}}{1 - R_{\max}} \right) \text{ dB}$$
-* **Jitter Proxy:** Measures cycle-to-cycle perturbation in the fundamental pitch period:
-  $$\text{Jitter} = \frac{\frac{1}{M-1} \sum_{i=1}^{M-1} |T_i - T_{i+1}|}{\frac{1}{M} \sum_{i=1}^M T_i}$$
-* **Shimmer Proxy:** Measures frame-to-frame perturbation in speech amplitude:
-  $$\text{Shimmer} = \frac{\frac{1}{M-1} \sum_{i=1}^{M-1} |A_i - A_{i+1}|}{\frac{1}{M} \sum_{i=1}^M A_i}$$
+---
 
-### 4. Phase Continuity & Group Delay
-Neural vocoders that reconstruct audio from magnitude spectrograms (e.g., Griffin-Lim, HiFi-GAN) often introduce phase discontinuities. AegisVoice tracks:
-* **Inter-Frame Phase Advancement Residual:** $\Delta \theta_k = \angle X_t[k] - \angle X_{t-1}[k] - 2\pi f_k H / f_s$.
-* **Group Delay Dispersion:** Frequency derivative of phase $\tau_g(\omega) = -\frac{d\phi(\omega)}{d\omega}$.
+### 4. Prosody, Pitch & Micro-Fluctuations
+
+#### Autocorrelation Pitch ($F_0$)
+Evaluated over voiced frames within the lag search range corresponding to $70\text{ Hz} \le F_0 \le 400\text{ Hz}$:
+
+$$
+R_x(\tau) = \frac{\sum_{n} x[n] x[n+\tau]}{\sqrt{\sum_n x^2[n] \sum_n x^2[n+\tau]}}
+$$
+
+#### Harmonic-to-Noise Ratio ($\text{HNR}$) Proxy
+Approximates the ratio of harmonic to noise power from the peak autocorrelation coefficient $R_{\max}$:
+
+$$
+\text{HNR} \approx 10 \log_{10} \left( \frac{R_{\max}}{1 - R_{\max}} \right) \text{ dB}
+$$
+
+#### Jitter Proxy
+Quantifies short-term cycle-to-cycle perturbation in fundamental pitch period duration:
+
+$$
+\text{Jitter} = \frac{\frac{1}{M-1} \sum_{i=1}^{M-1} |T_i - T_{i+1}|}{\frac{1}{M} \sum_{i=1}^M T_i}
+$$
+
+#### Shimmer Proxy
+Quantifies cycle-to-cycle perturbation in speech frame amplitude:
+
+$$
+\text{Shimmer} = \frac{\frac{1}{M-1} \sum_{i=1}^{M-1} |A_i - A_{i+1}|}{\frac{1}{M} \sum_{i=1}^M A_i}
+$$
+
+---
+
+### 5. Phase Continuity & Group Delay
+
+Neural vocoders that invert spectrograms to audio (e.g., Griffin-Lim, HiFi-GAN) often introduce discontinuous phase jumps or dispersion anomalies.
+
+#### Inter-Frame Phase Advancement Residual ($\Delta \theta_k$)
+Measures angular deviation between actual phase advancement and theoretical advancement:
+
+$$
+\Delta \theta_k = \angle X_t[k] - \angle X_{t-1}[k] - \frac{2\pi f_k H}{f_s}
+$$
+
+#### Group Delay Dispersion ($\tau_g$)
+Frequency derivative of the unwrapped phase spectrum:
+
+$$
+\tau_g(\omega) = -\frac{d\phi(\omega)}{d\omega}
+$$
 
 ---
 
@@ -272,7 +362,9 @@ python -m app.local_server --host 127.0.0.1 --port 8000 --data-dir data
 
 To prevent data leakage caused by identical speakers or recording conditions appearing in both training and test sets, AegisVoice enforces **Group-Aware Splitting**:
 
-$$\text{Group}(x_i) \cap \text{Group}(x_j) = \emptyset \quad \forall x_i \in \mathcal{D}_{\text{train}}, x_j \in \mathcal{D}_{\text{test}}$$
+$$
+\text{Group}(x_i) \cap \text{Group}(x_j) = \emptyset \quad \forall x_i \in \mathcal{D}_{\text{train}}, \; x_j \in \mathcal{D}_{\text{test}}
+$$
 
 ### Benchmark Snapshot (Sample Corpus)
 On the provided 42-clip sample corpus (`deepfake_sample_audio`) evaluated on 16 held-out test clips across 8 distinct recording groups:
