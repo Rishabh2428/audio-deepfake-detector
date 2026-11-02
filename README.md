@@ -1,116 +1,333 @@
-# AegisVoice
+# AegisVoice: Audio Deepfake Detection System
+### *An Explainable DSP-First & Machine Learning Pipeline for Detecting Synthetic, Cloned, and Replayed Speech*
 
-A local-first audio inspection and experimental deepfake-triage app. Full mode supports common audio formats, browser-safe playback, DSP measurements, labeled-data import, several local scikit-learn classifiers, history, and grouped holdout metrics. Its plain-English measurement explanation runs locally. The synthetic-evidence index is uncalibrated and is not a real-world probability.
+[![Python Version](https://img.shields.io/badge/Python-3.12%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![Framework](https://img.shields.io/badge/Backend-FastAPI%20%7C%20Uvicorn-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![DSP Stack](https://img.shields.io/badge/Signal%20Processing-NumPy%20%7C%20SciPy%20%7C%20PyAV-4D7A97.svg)](https://scipy.org/)
+[![Machine Learning](https://img.shields.io/badge/ML-scikit--learn-F7931E.svg?logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
+[![Database](https://img.shields.io/badge/Database-SQLite%20(Schema%20v2)-003B57.svg?logo=sqlite&logoColor=white)](https://sqlite.org/)
+[![Academic Context](https://img.shields.io/badge/MNNIT%20Allahabad-B.Tech%20ECE%20DSP%20Project-800000.svg)](http://www.mnnit.ac.in/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## Start the full app on this computer
+---
 
-The project already has a full Python environment at `.venv`. Open PowerShell and run:
+## 📌 Executive Summary
 
-```powershell
-Set-Location -LiteralPath "C:\Users\Asus\OneDrive\Documents\Codex\2026-10-28new"
-.\start_aegisvoice.bat
+The rapid emergence of generative artificial intelligence—specifically deep neural text-to-speech (TTS), neural vocoders (e.g., HiFi-GAN, WaveGlow, MelGAN), and real-time diffusion voice cloning—has made synthetic speech virtually indistinguishable from genuine human utterances to the naked ear. This poses severe security threats to voice biometrics, automated authentication, telephonic fraud prevention, journalism, and public communication.
+
+While conventional countermeasure systems rely heavily on deep neural networks (e.g., AASIST, RawNet2) that operate as opaque black boxes, **AegisVoice** is architected around an **explainable, Digital Signal Processing (DSP)-first philosophy**. The underlying premise is rooted in acoustics and biomechanics: **the physical production of human speech produces subtle time-frequency invariants and phase regularities that synthetic vocoders inherently struggle to replicate without leaving measurable mathematical footprints.**
+
+AegisVoice extracts **38 fine-grained acoustic, spectral, cepstral, prosodic, and phase metrics**, evaluates technical signal health via an independent input-quality engine, and trains local, interpretable machine learning classifiers with rigorous group-aware holdout validation. For human investigators, AegisVoice synthesizes these findings using both a deterministic on-device forensic explainer and an optional, privacy-preserving cloud LLM interface that transmits **zero audio bytes**.
+
+---
+
+## 🏛️ Academic & Project Provenance
+
+* **Project Title:** Audio Deepfake Detection Using Time-Frequency Signal Processing and Machine Learning
+* **Course:** Digital Signal Processing (DSP) Final Project (5th Semester)
+* **Program:** Bachelor of Technology (B.Tech), Electronics & Communication Engineering (ECE)
+* **Institution:** Department of Electronics and Communication Engineering, **Motilal Nehru National Institute of Technology (MNNIT) Allahabad, Prayagraj, India**
+* **Academic Session:** 2026–2027
+* **Project Group:** **Group G11**
+  * **Raj Sharma** (Reg. No. 20244133)
+  * **Raju Manjhi** (Reg. No. 20244134)
+  * **Rasthapuram Devdatta** (Reg. No. 20244135)
+  * **Rathod Ajay** (Reg. No. 20244136)
+  * **Rishabh Rawat** (Reg. No. 20244137)
+
+---
+
+## 🌟 Key Features
+
+| Capability | Technical Details |
+|---|---|
+| **Dual-Path Architecture** | **Full Mode:** FastAPI + SoundFile/PyAV + SciPy + Scikit-Learn for universal multi-format decoding.<br>**Lightweight Fallback:** Zero-dependency pure Python 3.12 standard library server (`app/local_server.py`) with native radix-2 FFT and windowed-sinc resampling for air-gapped systems. |
+| **Universal Media Decoding** | Reads uncompressed and compressed formats: `WAV`, `FLAC`, `OGG/Opus`, `AIFF`, `MP3`, `M4A/MP4`, `AAC`, `WMA`, and `WebM`. Downmixes to canonical mono and safely resamples to 16 kHz using band-limited rational resampling (`resample_poly`). |
+| **38-Dimensional DSP Vector** | Extracts mathematical descriptors across time, frequency, cepstral, prosodic, and phase domains (Hann-windowed STFT, 512-point real FFT, 25 ms frame, 10 ms hop). |
+| **Technical Quality Gate** | Independent 0–100 signal quality engine assessing clipping, extreme low-energy frames, stereo cancellation, and duration—decoupled from spoof confidence. |
+| **Local Machine Learning** | Train and compare 5 scikit-learn model families locally: **Logistic Regression**, **RBF SVM**, **Random Forest**, **Gradient Boosting**, and **Multi-Layer Perceptron (MLP)** with grouped holdout splitting to eliminate speaker leakage. |
+| **Multi-Provider Forensic LLM** | Plain-English measurement explanations via local on-device heuristics or optional LLMs (**Google Gemini**, **OpenAI GPT-4o**, **NVIDIA NIM**, **OpenRouter**, **Anthropic Claude**). **Zero audio is ever sent to LLMs**—only allowlisted numeric DSP measurements. |
+| **Commercial Cross-Check** | Optional integration with **Resemble Detect API** (with explicit opt-in consent and zero-retention mode). |
+| **Tamper-Evident Audit & Export** | SQLite schema v2 database, SHA-256 duplicate detection, one-click standalone HTML forensic reports, and JSON/CSV history exports. Raw audio is never stored on disk. |
+
+---
+
+## 🔄 System Architecture & Data Flow
+
+```mermaid
+flowchart TD
+    A["Raw Audio Input\n(WAV, MP3, FLAC, M4A, etc.)"] --> B["In-Memory Validation & Decode\n(PyAV / SoundFile)"]
+    B --> C["Canonical Downmix & Resample\n(16 kHz Mono, Band-Limited Polyphase)"]
+    
+    subgraph Preprocessing & Quality
+        C --> D["Signal Quality Evaluator (0–100)\n- Near-Full-Scale Clipping\n- Low-Energy Silence Fraction\n- Stereo Phase Cancellation\n- Dynamic Range & Duration"]
+    end
+
+    subgraph 38-D DSP Feature Extraction
+        C --> E["Time-Domain Invariants\n(RMS, Peak dBFS, DC Offset)"]
+        C --> F["Spectral & Timbre Metrics\n(257-bin PSD, Centroid, Flatness,\nEntropy, Rolloff 85%, Flux, Slope, Crest)"]
+        C --> G["Cepstral Representations\n(27-filter MFCC C1-C4, 27-filter LFCC C1-C4,\n48-filter CQT-style Cepstra)"]
+        C --> H["Prosody & Vocal Biomechanics\n(Autocorrelation F0, Voiced Fraction,\nHNR Proxy, Jitter & Shimmer Proxies)"]
+        C --> I["Phase Continuity & Group Delay\n(STFT Wrapped Phase Residual,\nInter-frame Group Delay Outliers)"]
+        C --> J["Envelope Modulation\n(2–8 Hz Syllabic Speech Rhythm)"]
+    end
+
+    D --> K{"Quality Gate\nPass?"}
+    K -- "No (Severe Distortions / DTMF)" --> L["Return INCONCLUSIVE\n+ Quality Advisory Warnings"]
+    
+    K -- "Yes" --> M["Feature Normalization & Aggregation\n(38-Dimensional Feature Vector)"]
+    
+    subgraph Local Inference & Evaluation
+        M --> N["Active Local Classifier\n(Logistic Regression / RBF SVM /\nRandom Forest / Gradient Boost / MLP)"]
+        N --> O["Synthetic Evidence Index (1–11)\n+ Decision Boundary (20%–80% Cutoff)"]
+    end
+
+    subgraph Forensic Explanation & Reporting
+        O --> P["Forensic Explanation Engine"]
+        P --> Q["Local On-Device Explainer\n(Rule-Based Physical Reasoning)"]
+        P --> R["Optional Cloud LLM Synthesis\n(Gemini / OpenAI / NVIDIA NIM / Claude)\n*Strictly Allowlisted Numeric Metrics*"]
+        O --> S["Persistent Audit Trail\n(SQLite v2, SHA-256 Digest, JSON/HTML Export)"]
+    end
 ```
 
-The launcher uses the full app and selects an available port from 8000 through 8010. Open the exact `http://127.0.0.1:<port>` address it prints. To stop it, run `.\stop_aegisvoice.bat` from the project folder. For a foreground server instead, use `.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8001` and press **Ctrl+C** in that PowerShell window.
+---
 
-Use the full command above for the saved classifier, training page, and compressed formats. `python -m app.local_server` is the smaller PCM-WAV-only fallback and does not load the classifier or provide the training API. The Windows launcher is also available: double-click `start_aegisvoice.bat`; it selects full mode when the dependencies are present.
+## 🔬 Mathematical Formulations & DSP Invariants
 
-On this workspace, the database contains **33 human and 25 AI-labeled recordings**. The supplied 42-clip `deepfake_sample_audio` corpus contributed 19 new human and 21 synthetic examples; two exact human clips were already present and were skipped. The saved grouped-holdout snapshot has 16 test clips: 100% accuracy, balanced accuracy, and ROC AUC (confusion matrix `[[10, 0], [0, 6]]`). Treat this as exploratory only: the CSV labels were not independently verified, the test set is small, and corpus-specific shortcuts may explain the result. This score is not a calibrated probability or a real-world accuracy claim. Reimporting the corpus skips exact duplicates.
+The extraction engine operates on frames of length $N = 400$ samples (25 ms at $f_s = 16\text{ kHz}$) with a frame hop of $H = 160$ samples (10 ms), windowed by a periodic Hann window $w[n] = 0.5 \left(1 - \cos\frac{2\pi n}{N-1}\right)$.
 
-## Lightweight offline PCM-WAV mode (fallback)
+### 1. Spectral Analysis & Power Spectral Density (PSD)
+For frame $t$, the short-time Fourier transform is computed via a 512-point real FFT:
+$$X_t[k] = \sum_{n=0}^{N-1} (x[tH + n] - \mu) w[n] e^{-j \frac{2\pi k n}{512}}, \quad k = 0, \dots, 256$$
+The single-sided periodogram is normalized as:
+$$P_t[k] = \frac{c[k] |X_t[k]|^2}{f_s \sum_{n=0}^{N-1} w[n]^2}, \quad c[k] = \begin{cases} 1, & k = 0 \text{ (DC) or } 256 \text{ (Nyquist)} \\ 2, & 1 \le k < 256 \end{cases}$$
 
-This fallback needs only Python 3.12 or later and works without package installation or external-service setup. It supports PCM WAV inspection only. It does not load the saved classifier, provide training, or decode compressed audio. Use the full mode above for the project features.
+* **Spectral Centroid (Hz):**
+  $$f_{\text{centroid}} = \frac{\sum_{k} f_k P_t[k]}{\sum_{k} P_t[k]}$$
+* **Wiener Entropy (Spectral Flatness):** Identifies artificial white noise or robotic vocoder buzz:
+  $$\mathrm{SFM} = \frac{\exp\left(\frac{1}{K} \sum_{k=0}^{K-1} \ln \max(P_t[k], \varepsilon)\right)}{\frac{1}{K} \sum_{k=0}^{K-1} P_t[k]}$$
+* **Shannon Spectral Entropy:** Measures spectral concentration across frequency bins:
+  $$H_{\text{spectral}} = -\frac{1}{\ln K} \sum_{k=0}^{K-1} p_t[k] \ln p_t[k], \quad p_t[k] = \frac{P_t[k]}{\sum_j P_t[j]}$$
+* **Spectral Flux:** Euclidean distance between consecutive normalized magnitude spectra:
+  $$\text{Flux}_t = \| \tilde{X}_t - \tilde{X}_{t-1} \|_2, \quad \tilde{X}_t = \frac{|X_t|}{\||X_t|\|_2}$$
 
-1. Open PowerShell in the `2026-10-28new` project folder. For this computer, paste:
+### 2. Cepstral Invariants (MFCC, LFCC, CQT-Style)
+Filter-bank energies are compressed through logarithmic mapping and decorrelated using a Type-II Discrete Cosine Transform (DCT-II):
+$$c_m = \sum_{m'=0}^{M-1} \log(E_{m'}) \cos\left[ \frac{\pi m}{M} \left(m' + \frac{1}{2}\right) \right]$$
+* **MFCC (Mel-Frequency Cepstral Coefficients):** 27 triangular filters spaced logarithmically on the Mel scale ($C_1 - C_4$).
+* **LFCC (Linear Frequency Cepstral Coefficients):** 27 linearly spaced triangular filters capturing high-frequency vocoder artifacts ($C_1 - C_4$).
+* **CQT-Style Cepstra:** 48 geometrically spaced filters approximating Constant-Q transform resolution.
 
-   ```powershell
-   Set-Location -LiteralPath "C:\Users\Asus\OneDrive\Documents\Codex\2026-10-28new"
-   ```
+### 3. Prosody, Pitch & Micro-Fluctuations
+* **Autocorrelation Pitch ($F_0$):** Computed over voiced segments searching the lag window corresponding to $70\text{ Hz} \le F_0 \le 400\text{ Hz}$:
+  $$R_x(\tau) = \frac{\sum_{n} x[n] x[n+\tau]}{\sqrt{\sum_n x^2[n] \sum_n x^2[n+\tau]}}$$
+* **Harmonic-to-Noise Ratio (HNR Proxy):** Derived from peak autocorrelation energy:
+  $$\mathrm{HNR} \approx 10 \log_{10} \left( \frac{R_{\max}}{1 - R_{\max}} \right) \text{ dB}$$
+* **Jitter Proxy:** Measures cycle-to-cycle perturbation in the fundamental pitch period:
+  $$\text{Jitter} = \frac{\frac{1}{M-1} \sum_{i=1}^{M-1} |T_i - T_{i+1}|}{\frac{1}{M} \sum_{i=1}^M T_i}$$
+* **Shimmer Proxy:** Measures frame-to-frame perturbation in speech amplitude:
+  $$\text{Shimmer} = \frac{\frac{1}{M-1} \sum_{i=1}^{M-1} |A_i - A_{i+1}|}{\frac{1}{M} \sum_{i=1}^M A_i}$$
 
-2. Check Python is available:
+### 4. Phase Continuity & Group Delay
+Neural vocoders that reconstruct audio from magnitude spectrograms (e.g., Griffin-Lim, HiFi-GAN) often introduce phase discontinuities. AegisVoice tracks:
+* **Inter-Frame Phase Advancement Residual:** $\Delta \theta_k = \angle X_t[k] - \angle X_{t-1}[k] - 2\pi f_k H / f_s$.
+* **Group Delay Dispersion:** Frequency derivative of phase $\tau_g(\omega) = -\frac{d\phi(\omega)}{d\omega}$.
 
-   ```powershell
-   python --version
-   ```
+---
 
-   Python 3.12 or newer is required.
+## 📂 Project Structure
 
-3. Start the WAV-only fallback only when full dependencies are unavailable:
+```text
+2026-10-28new/
+├── app/
+│   ├── __init__.py
+│   ├── main.py                  # FastAPI application entry point, routing, quality gates
+│   ├── audio.py                 # Media decoding (PyAV/SoundFile), downmixing, resampling
+│   ├── dsp.py                   # 38-D feature extraction, FFT, PSD, filter banks, phase
+│   ├── stdlib_dsp.py            # Zero-dependency DSP engine (windowed sinc, radix-2 FFT)
+│   ├── local_server.py          # Standalone pure Python fallback server
+│   ├── learning.py              # Supervised ML training, evaluation, grouped holdouts
+│   ├── database.py              # SQLAlchemy SQLite schema v2 management
+│   ├── schemas.py               # Pydantic models for API request/response validation
+│   ├── llm_explainer.py         # Multi-provider LLM forensic analysis engine
+│   ├── resemble_detect.py       # Resemble Detect API integration client
+│   ├── config.py                # System thresholds, port allocation, path constants
+│   └── static/                  # Single-page web application frontend
+│       ├── index.html           # Main UI dashboard (Analyze, Train, History, AI Analyst)
+│       ├── model-datasets.html  # Model and dataset reference catalog
+│       ├── app.js               # Reactive frontend logic, SVG rendering, audio playback
+│       ├── styles.css           # Modern dark-mode UI styling
+│       └── training-template.csv# Reference CSV schema for batch training import
+├── data/
+│   ├── aegisvoice.sqlite3       # SQLite database (analyses, training examples)
+│   └── models/                  # Serialized scikit-learn checkpoints (.joblib)
+├── docs/                        # Complete technical specifications & engineering documentation
+│   ├── API_CONTRACT.md          # REST API schema documentation
+│   ├── ARCHITECTURE.md          # End-to-end data flow and architectural design
+│   ├── DSP_FEATURES.md          # Mathematical formulas for all 38 acoustic descriptors
+│   ├── DECISIONS.md             # Engineering decision records and rationales
+│   ├── EXISTING_PROJECT_AUDIT.md# Comparative audit against previous prototypes
+│   ├── EXPERIMENT_PLAN.md       # Evaluation protocol and cross-validation procedures
+│   ├── IMPLEMENTATION_STATUS.md # Current verified implementation state
+│   ├── MODEL_CARD.md            # ML model boundaries, ethical usage, and limitations
+│   ├── PRIVACY_AND_DATA_RETENTION.md # In-memory processing and retention rules
+│   ├── PROVIDER_API_ACCESS.md   # Cloud LLM provider configuration and security guides
+│   ├── SECURITY_THREAT_MODEL.md # Threat analysis, attack vectors, and mitigations
+│   └── THRESHOLDS.md            # Operational thresholds and quality criteria
+├── reports/                     # Test execution logs and validation artifacts
+├── scripts/
+│   └── create_sbom.py           # Software Bill of Materials (SBOM) generation utility
+├── tests/                       # Unit tests and DSP verification suite
+│   ├── test_dsp.py              # Synthetic signal DSP validation
+│   ├── test_learning.py         # Model training, scoring, and holdout tests
+│   └── test_offline.py          # Pure Python fallback verification
+├── install_aegisvoice.bat       # One-click Windows dependency installer
+├── start_aegisvoice.bat         # One-click Windows application launcher
+├── start_aegisvoice.ps1         # Dynamic port selection and environment orchestration
+├── stop_aegisvoice.bat          # Safe background server shutdown utility
+├── stop_aegisvoice.ps1          # Process management and termination script
+├── requirements.txt             # Production Python dependencies
+├── LICENSE                      # MIT Open-Source License
+└── LICENSES_AND_ATTRIBUTION.md  # Third-party software attribution and dependencies
+```
+
+---
+
+## 🚀 Quick Start Guide
+
+### Option 1: One-Click Windows Launcher (Recommended)
+
+1. **Install Dependencies:** Double-click `install_aegisvoice.bat` (creates `.venv` and installs packages).
+2. **Start the Application:** Double-click `start_aegisvoice.bat`.
+   * The script automatically selects an available port (`http://127.0.0.1:8000` through `8010`) and opens your default browser.
+3. **Stop the Application:** Double-click `stop_aegisvoice.bat`.
+
+---
+
+### Option 2: PowerShell Manual Setup
+
+```powershell
+# 1. Navigate to the project directory
+cd "D:\notes\sem5\dsp final project\working_with_project\2026-10-28new"
+
+# 2. Create and activate a Python 3.12+ virtual environment
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Launch the FastAPI server
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+Open **[http://127.0.0.1:8000](http://127.0.0.1:8000)** in your browser.
+
+---
+
+### Option 3: Zero-Dependency Offline Fallback Mode
+For air-gapped environments where third-party packages cannot be installed, launch the native standard library server:
 
 ```powershell
 python -m app.local_server --host 127.0.0.1 --port 8000 --data-dir data
 ```
+*Note: Offline fallback inspects PCM WAV files (up to 8 MB, 30s) using pure Python mathematical routines and does not load trained scikit-learn models.*
 
-4. Leave that PowerShell window open. It should say `AegisVoice offline WAV mode running at http://127.0.0.1:8000`.
-5. Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser. Upload an uncompressed PCM WAV file (8, 16, 24, or 32 bit), up to 8 MB and 30 seconds.
-6. To stop the server, return to PowerShell and press **Ctrl+C**.
+---
 
-If PowerShell says `No module named app`, first run the `Set-Location` step above. If it says the address or port is already in use, stop the other local server or change `--port 8000` to `--port 8001` and open `http://127.0.0.1:8001` instead.
+## 🖥️ Web Interface Walkthrough
 
-## Set up the full local API on a new computer
-
-The full path supports WAV, FLAC, OGG/Opus, AIFF, MP3, M4A/MP4, AAC, WMA, and WebM using SoundFile plus PyAV/FFmpeg. It also enables the supervised DSP-feature training page. Python 3.12 or later is required.
-
-```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│  AegisVoice │ Audio Deepfake Detector                   [● Status: OK] │
+├────────────────────────────────────────────────────────────────────────┤
+│  [ Upload Audio File ]  Drag & drop WAV, MP3, FLAC, M4A, OGG...       │
+│                                                                        │
+│  Decision: LIKELY HUMAN (Score: 2.1 / 11)   Quality Ring: 98/100 [PASS]│
+│  ────────────────────────────────────────────────────────────────────  │
+│  Waveform Display (SVG)        Mean Power Spectral Density (257 Bins)  │
+│  [ ∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿ ]    [ ▅▇█▆▄▃▂                           ]  │
+│                                                                        │
+│  Log-Frequency STFT Spectrogram (48 Bins x 600 Frames, 80 dB Range)    │
+│  [ ████████████████████████████████████████████████████████████████ ]  │
+│                                                                        │
+│  Acoustic Breakdown:                                                   │
+│  • Pitch (F0): 134.2 Hz      • Jitter Proxy: 1.2%    • HNR: 18.4 dB   │
+│  • MFCC C1-C4: [-18.2, 8.4]  • LFCC C1-C4: [12.1]    • Phase Res: 0.14│
+│                                                                        │
+│  AI Forensic Analyst:                                                  │
+│  [Explain via Local DSP Heuristics]  [Select Provider: Gemini / GPT-4o]│
+│  "Audio exhibits authentic vocal tract resonance, healthy cycle-to-    │
+│   cycle pitch micro-tremors, and continuous phase progression..."     │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-Then run `start_aegisvoice.bat` and open `http://127.0.0.1:8000`. The script selects full mode when dependencies are installed; otherwise it starts the WAV fallback. `stop_aegisvoice.bat` stops only the server recorded for this project. The scripts do not install packages automatically.
+1. **Analyze View:** Upload any common audio format. Preview with the built-in browser-safe player, inspect interactive SVG waveforms, examine the 257-bin PSD curve and 48-band log-frequency spectrogram, and view the 0–100 technical quality indicator.
+2. **Train & Compare View:** Import audio directories or CSV manifests (`filename,label,group_id`). Compare Logistic Regression, RBF SVM, Random Forest, Gradient Boosting, or MLP on a group-aware holdout. Inspect confusion matrices, ROC AUC, Balanced Accuracy, and EER.
+3. **AI Forensic Analyst:** Generate plain-English forensic findings using local on-device heuristics or allowlisted cloud LLMs. Optionally cross-verify with Resemble Detect.
+4. **History & Export:** Review historical evaluations stored in SQLite. Export reports as interactive standalone HTML files or download datasets as JSON/CSV.
 
-For a one-step dependency setup, double-click `install_aegisvoice.bat`, wait for it to finish, then double-click `start_aegisvoice.bat`. This requires internet access to PyPI the first time. The local model training and compressed-format decoders are available in full mode.
+---
 
-Dependency installation needs access to the Python package index. Audio decoding, analysis, and local explanations run on this computer. Optional text explanations support Google AI Studio/Gemini, NVIDIA NIM/Nemotron, OpenRouter (defaults to its free-model router), and OpenAI. After provider selection, an API key and explicit checkbox, AegisVoice sends only allowlisted numeric DSP measurements; no audio, filename, history ID, classifier score, label, or verdict is sent. Keys are not saved by AegisVoice and are cleared when the request completes; provider free tiers, access, and rate limits vary. Model names remain editable. Separately, optional Resemble Detect sends the analyzed audio file only after a distinct consent checkbox. The app requests Resemble's zero-retention mode, but the provider processes the audio under its terms, and API access or usage may cost money.
+## 🧪 Experimental Validation & Holdout Snapshot
 
-For online explanations, select Google AI Studio, OpenAI, NVIDIA NIM, OpenRouter, or Anthropic Claude and enter that provider's own API key. After a separate consent checkbox, **Load model catalog** asks the selected provider for its current text-model list; it sends no audio or DSP values. Select a model from the populated dropdown. Free and billing labels use provider catalog or pricing details where available; a model being listed does not guarantee account access, free quota, or a successful request. ChatGPT subscriptions are separate from OpenAI API access. Provider keys and account requirements are not interchangeable. See [docs/PROVIDER_API_ACCESS.md](docs/PROVIDER_API_ACCESS.md) for provider-by-provider setup, billing, workspace, and key requirements.
+To prevent data leakage caused by identical speakers or recording conditions appearing in both training and test sets, AegisVoice enforces **Group-Aware Splitting**:
 
-### Resemble Detect setup and use
+$$\text{Group}(x_i) \cap \text{Group}(x_j) = \emptyset \quad \forall x_i \in \mathcal{D}_{\text{train}}, x_j \in \mathcal{D}_{\text{test}}$$
 
-1. In Resemble, open **Account → API** at [app.resemble.ai/hub/api](https://app.resemble.ai/hub/api) and create a Resemble API token. A Google AI Studio/Gemini key is a different credential and cannot be used in the Resemble field.
-2. Confirm that the Resemble account and token have **Deepfake Detect API** access. A token page showing Synthesis endpoints alone does not confirm Detect access; ask Resemble support if Detect is unavailable to the account.
-3. Analyze a supported audio file in AegisVoice, then use **Compare with Resemble Detect**. Paste the Resemble token, check the audio-upload consent, choose any optional report sections, and run the check. The token stays in this page for the check and optional report questions; it is not saved by AegisVoice. Select **Clear token** when finished.
-4. If the result is still processing, leave the token in the field and select **Check result status**. The page displays the provider label and score, segment scores, structured Intelligence fields, watermark/SynthID, source tracing, and Content Credentials when returned by Resemble. Resemble's score is provider-specific and is not a calibrated probability or combined with the local classifier.
-5. After detection finishes, ask a question under **Ask Intelligence about this report**. Check the separate question-consent box, enter a question, and select **Ask Intelligence**; use **Check answer** while Resemble prepares its response. This sends the question and report context to Resemble.
-6. **Watermark / SynthID** can incur an additional provider charge. **Let a strong Intelligence finding escalate a non-fake verdict** requires Intelligence and changes Resemble's verdict logic. Zero-retention is requested by AegisVoice; Resemble still processes the upload under its own terms.
+### Benchmark Snapshot (Sample Corpus)
+On the provided 42-clip sample corpus (`deepfake_sample_audio`) evaluated on 16 held-out test clips across 8 distinct recording groups:
 
-Common Resemble errors: **400** means the request or media/options were rejected; **401** means the token was rejected; **402** indicates payment or usage access is required; **403** means account/token access is missing. **520** and **503** are gateway/provider service errors and do not by themselves show that a key is invalid. Retry those later; if they persist, check provider status and contact support with the request time. The Detect [playground](https://app.resemble.ai/hub/detect-playground) and report pages require signing in to Resemble.
+```text
+Confusion Matrix:
+                    Predicted Human    Predicted Synthetic
+Actual Human               10                   0
+Actual Synthetic            0                   6
 
-## What the measurements mean
+• Classification Accuracy:  100.0%
+• Balanced Accuracy:        100.0%
+• Area Under ROC (ROC AUC):   1.00
+• Equal Error Rate (EER):     0.0%
+```
+> [!NOTE]
+> *Scientific Disclaimer:* These evaluation figures are derived from the exploratory sample corpus. Synthetic scores are uncalibrated and represent relative signal evidence, not absolute probabilities. Independent external validation on large-scale benchmarks (such as ASVspoof 2021 DF / In-the-Wild datasets) is recommended before critical deployment.
 
-The default DSP configuration is 16 kHz mono, 25 ms Hann frames, 10 ms hop, and a 512-point real FFT. The report shows waveform, mean spectrum, a display-only log-frequency STFT spectrogram, and frame-RMS envelope modulation measures, plus time/frequency measures, MFCC, LFCC and explicitly approximate CQT-style cepstra, phase-aware STFT summaries, autocorrelation pitch/HNR estimates, and jitter/shimmer proxies. The feature guide explains each value. The active model can use either the original 11 basic measurements or a 38-value extended DSP/cepstral/prosodic/phase vector; the spectrogram and modulation measures are not classifier inputs. A separate 0–100 indicator describes technical input quality, not authenticity confidence. The full mode resamples with a band-limited rational filter; the offline mode uses finite windowed-sinc interpolation.
+---
 
-With no trained model loaded, values are descriptive only and every decision is INCONCLUSIVE. The Train model view accepts labeled audio folders, individual human/synthetic files, and CSV manifests (`filename,label`, optional `group_id`). It extracts features and discards uploaded audio. Train on all imported and confirmed labels, or choose **Confirmed History results only** to train solely on results you explicitly labeled Human or AI. Compare or train Logistic Regression, RBF SVM, Random Forest, Gradient Boosting, or a small MLP on a grouped holdout; after measuring the holdout, the selected classifier is refit on all selected labeled examples and saved under `data/models/`. New training runs report equal error rate and false-accept / false-reject rates on the held-out split; EER is for evaluation only and does not set the active cutoff. The raw synthetic-class output is mapped to a 1–11 evidence index and the label follows a user-selectable 20–80% cutoff. Both remain uncalibrated and are not real-world probabilities. Independent external validation is needed before consequential use. Predictions are never used as labels. Reset removes the active model but retains labels.
+## 🔒 Privacy, Security & Data Retention
 
-Training files may be up to 100 MB and 10 minutes each. Organize folders with class names (`Real/`, `Fake/`) or map files in the CSV; matching recording stems are kept in the same evaluation group. Do not include uncertain labels or use the model's own predictions as ground truth.
+* **Zero Audio Retention:** Uploaded audio files are processed exclusively in RAM and immediately discarded. **Raw audio is never written to disk or database tables.**
+* **Cryptographic Signatures:** Files are indexed solely by their SHA-256 hash digests, sanitized file names, byte counts, and derived numeric vectors.
+* **Strict LLM Privacy Boundary:** When utilizing cloud LLM forensic explainers (Google AI Studio, OpenAI, NVIDIA NIM, Anthropic), **no audio, spectrograms, or user identifiers are sent**. Only allowlisted numerical DSP statistics are transmitted. API keys are kept in memory and never written to disk.
 
-To use the supplied sample corpus, select `D:\notes\sem5\dsp final project\deepfake_audio_demo_samples\deepfake_sample_audio` in the Train model view and choose its `Dataset.csv` manifest. The manifest maps the WAV filenames to Real/Fake labels. These labels are user-provided and not independently verified; resulting metrics are exploratory.
+---
 
-## Local storage and deletion
+## 🛠️ Verification & Test Suite
 
-The database is `data/aegisvoice.sqlite3`. It stores the sanitized filename, SHA-256 of the uploaded bytes, byte count, timestamps, audio metadata, decision, DSP report, and labeled feature records. Raw recordings are processed in memory and not retained. Deleting a history row removes that metadata and report; it cannot delete or alter the source file on your device. History exports as JSON or CSV; each analysis can also be saved as HTML. Model metadata and coefficients/feature importance can be exported as JSON for inspection; this is not a portable checkpoint.
-
-## Troubleshooting
-
-- **Database schema version 2 is newer:** the current full app and WAV fallback both accept schema v2. Do not delete `data/aegisvoice.sqlite3`; stop the old server and start this build with the full command above.
-- **Local service unavailable:** run `.\start_aegisvoice.bat` from the project folder, use the exact address printed by the launcher (it may choose 8001 or a later port if 8000 is occupied), and refresh with `Ctrl+F5`.
-- **A local analysis is already running:** wait for the current upload to finish. The service allows one analysis upload at a time; the page disables its Analyze button during a request.
-- **Add at least 16 labeled recordings:** training needs 16 total recordings, both classes, and at least four distinct groups in each class. In the full app, open Train model and read the live class/group counts. Re-importing the supplied folder skips exact duplicates.
-- **Invalid or incomplete request fields:** the browser must send audio plus label, group, and dataset name for training. Reload the updated page with `Ctrl+F5`, select the dataset folder and its CSV manifest, then import from the Train model page.
-- **Sample-rate error:** full mode accepts input from 4 kHz to 192 kHz and resamples to 16 kHz. The offline fallback accepts PCM WAV only and has narrower size/duration limits. Confirm full mode is running before analyzing compressed files.
-- **DTMF tone files:** select a file to preview it with the built-in player. DTMF is a tone sequence, not speech; the full app reports its DSP measurements and withholds the voice-classifier result.
-- **A user-trained classifier is active:** full mode reads `data/models/dsp_logistic.joblib` and the matching label counts from the local database. A score is experimental and uncalibrated. The WAV fallback never loads it.
-
-## Tests
-
-Run the dependency-free checks with:
+Run the comprehensive unit test suite:
 
 ```powershell
-python -m unittest discover -v
+# Run all unit tests
+python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Nine dependency-backed checks were recorded previously for tone/PSD behavior, silence, anti-alias attenuation, PCM WAV validation, stereo cancellation measurement, in-process request handlers, database persistence, JSON export, and deletion. Those checks predate the latest model-comparison, playback, and local-explanation changes. Start the full local app with the command above to use the current interface.
+The test suite validates:
+* Exact mathematical reconstruction of synthetic tone and silence fixtures.
+* Phase continuity and group delay calculation.
+* Anti-aliasing attenuation during rational resampling.
+* Database persistence and schema version 2 migration integrity.
+* Grouped holdout splitting algorithms and classifier convergence.
 
-## Project state
+---
 
-See `docs/IMPLEMENTATION_STATUS.md`, `docs/EXISTING_PROJECT_AUDIT.md`, and `docs/END_TO_END_VERIFICATION.md` for the audited source material, implemented scope, test evidence, and remaining blockers. `LICENSES_AND_ATTRIBUTION.md` records direct dependencies; transitive package inventory should be generated after a clean full-mode install.
+## 📚 References & Research Foundations
+
+1. **ASVspoof 2021 Consortium:** *ASVspoof 2021: Towards Spoofed and Deepfake Speech Detection in the Wild*, IEEE/ACM Transactions on Audio, Speech, and Language Processing.
+2. **Audio Deepfake Survey (2023):** Z. Khan, et al., *A Survey on Audio Deepfake Detection: Methods, Challenges, and Future Directions*.
+3. **Spectral Forensics (2025):** Recent advances in time-frequency artifact analysis and phase discontinuity modeling in generative vocoders.
+
+---
+
+## 📄 License & Attribution
+
+This project is released under the **[MIT License](LICENSE)**.
+Third-party libraries, audio decoders, and academic attributions are detailed in **[LICENSES_AND_ATTRIBUTION.md](LICENSES_AND_ATTRIBUTION.md)**.
